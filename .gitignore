@@ -1,0 +1,9 @@
+# Folder view configuration files
+.DS_Store
+
+# Files that might appear on external disks of OS X
+.Spotlight-V100
+.Trashes
+
+# Python files
+*.pyc

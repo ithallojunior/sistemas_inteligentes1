@@ -17,9 +17,10 @@ import datetime
 
 ```python
 class mlp():
-    def __init__(self, hidden_layer_size=3, alpha=0.1, max_iter=1000, bias=True,  
+    def __init__(self, hidden_layer_size=3, activation="sigmoid", alpha=0.1, max_iter=1000, bias=True,  
                  tol=1e-10, seed=None, keep_error_list=True, warm_start=False, coefs=None):
         self.hidden_layer_size = hidden_layer_size
+        self.activation = activation
         self.alpha = alpha
         self.max_iter = max_iter
         self.bias = bias
@@ -33,11 +34,17 @@ class mlp():
         self.X = np.array([[0, 0],[0, 1], [1, 0], [1, 1]])
         self.y = np.array([0, 1, 1, 0])
 
-    # sigmoid function
+    # activaton function
     def _function(self, X, deriv=False):
-        if(deriv==True):
-            return X*(1-X)
-        return 1./(1 + np.exp(-X))
+        if self.activation=="tanh":
+            if(deriv==True):
+                return 1. - np.square(X)
+            else: return np.tanh(X)
+        elif self.activation=="sigmoid":
+            if(deriv==True):
+                return X * (1 - X ) 
+            else:  return 1./(1+np.exp( -X ))
+        
     
     # corrects the  shape of y
     def _y_shape_corrector(self, y):
@@ -180,18 +187,21 @@ class mlp():
             plt.show()
 ```
 
-## The example
+## Examples
+
+
+#### Using sigmoid
 
 
 ```python
-clf = mlp(seed=1, max_iter=300, hidden_layer_size=4, alpha=5 )
-clf.example_run()   
+clf = mlp(seed=1, activation="sigmoid", max_iter=300, hidden_layer_size=4, alpha=5)
+%time clf.example_run()   
 ```
 
-    Starting MLP at: 2018-04-15 21:44:18.771945
-    Finishing MLP training at: 2018-04-15 21:44:18.797382
+    Starting MLP at: 2018-04-15 23:03:28.843756
+    Finishing MLP training at: 2018-04-15 23:03:28.871820
     Final error: 0.000949241885288
-    It took 0:00:00.025437
+    It took 0:00:00.028064
     Results:
     
      X    y    Predicted
@@ -204,5 +214,40 @@ clf.example_run()
 
 
 
-![png](output_4_1.png)
+![png](output_5_1.png)
+
+
+    CPU times: user 462 ms, sys: 57.3 ms, total: 519 ms
+    Wall time: 530 ms
+
+
+#### Using tanh
+
+
+```python
+clf = mlp(seed=1, activation="tanh", max_iter=300, hidden_layer_size=4, alpha=.4)
+%time clf.example_run()   
+```
+
+    Starting MLP at: 2018-04-15 23:03:29.382378
+    Finishing MLP training at: 2018-04-15 23:03:29.421537
+    Final error: 0.00171551818774
+    It took 0:00:00.039159
+    Results:
+    
+     X    y    Predicted
+    [0 0] 0 -0.0430672878372
+    [0 1] 1 0.960204330911
+    [1 0] 1 0.965861547775
+    [1 1] 0 -0.0495891910655
+    
+    score: 99.823%
+
+
+
+![png](output_7_1.png)
+
+
+    CPU times: user 239 ms, sys: 12.7 ms, total: 252 ms
+    Wall time: 265 ms
 

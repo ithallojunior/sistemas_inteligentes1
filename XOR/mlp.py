@@ -11,9 +11,10 @@ import datetime
 
 
 class mlp():
-    def __init__(self, hidden_layer_size=3, alpha=0.1, max_iter=1000, bias=True,
+    def __init__(self, hidden_layer_size=3, activation="sigmoid", alpha=0.1, max_iter=1000, bias=True,
                  tol=1e-10, seed=None, keep_error_list=True, warm_start=False, coefs=None):
         self.hidden_layer_size = hidden_layer_size
+        self.activation = activation
         self.alpha = alpha
         self.max_iter = max_iter
         self.bias = bias
@@ -27,11 +28,17 @@ class mlp():
         self.X = np.array([[0, 0],[0, 1], [1, 0], [1, 1]])
         self.y = np.array([0, 1, 1, 0])
 
-    # sigmoid function
+    # activaton function
     def _function(self, X, deriv=False):
-        if(deriv==True):
-            return X*(1-X)
-        return 1./(1 + np.exp(-X))
+        if self.activation=="tanh":
+            if(deriv==True):
+                return 1. - np.square(X)
+            else: return np.tanh(X)
+
+        elif self.activation=="sigmoid":
+            if(deriv==True):
+                return X * (1 - X )
+            else:  return 1./(1+np.exp( -X ))
 
     # corrects the  shape of y
     def _y_shape_corrector(self, y):

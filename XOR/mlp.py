@@ -32,7 +32,7 @@ class mlp():
     def _function(self, X, deriv=False):
         if self.activation=="tanh":
             if(deriv==True):
-                return 1. - np.square(X)
+                return 1. - np.square(np.tanh(X))
             else: return np.tanh(X)
 
         elif self.activation=="sigmoid":

@@ -38,12 +38,13 @@ class mlp():
     def _function(self, X, deriv=False):
         if self.activation=="tanh":
             if(deriv==True):
-                return 1. - np.square(X)
+                return 1. - np.square(np.tanh(X))
             else: return np.tanh(X)
         elif self.activation=="sigmoid":
             if(deriv==True):
                 return X * (1 - X ) 
             else:  return 1./(1+np.exp( -X ))
+
         
     
     # corrects the  shape of y
@@ -198,10 +199,10 @@ clf = mlp(seed=1, activation="sigmoid", max_iter=300, hidden_layer_size=4, alpha
 %time clf.example_run()   
 ```
 
-    Starting MLP at: 2018-04-15 23:03:28.843756
-    Finishing MLP training at: 2018-04-15 23:03:28.871820
+    Starting MLP at: 2018-04-15 23:28:57.799237
+    Finishing MLP training at: 2018-04-15 23:28:57.826877
     Final error: 0.000949241885288
-    It took 0:00:00.028064
+    It took 0:00:00.027640
     Results:
     
      X    y    Predicted
@@ -217,8 +218,8 @@ clf = mlp(seed=1, activation="sigmoid", max_iter=300, hidden_layer_size=4, alpha
 ![png](output_5_1.png)
 
 
-    CPU times: user 462 ms, sys: 57.3 ms, total: 519 ms
-    Wall time: 530 ms
+    CPU times: user 445 ms, sys: 74.2 ms, total: 519 ms
+    Wall time: 605 ms
 
 
 #### Using tanh
@@ -229,25 +230,25 @@ clf = mlp(seed=1, activation="tanh", max_iter=300, hidden_layer_size=4, alpha=.4
 %time clf.example_run()   
 ```
 
-    Starting MLP at: 2018-04-15 23:03:29.382378
-    Finishing MLP training at: 2018-04-15 23:03:29.421537
-    Final error: 0.00171551818774
-    It took 0:00:00.039159
+    Starting MLP at: 2018-04-15 23:28:58.411577
+    Finishing MLP training at: 2018-04-15 23:28:58.440488
+    Final error: 0.00363558474058
+    It took 0:00:00.028911
     Results:
     
      X    y    Predicted
-    [0 0] 0 -0.0430672878372
-    [0 1] 1 0.960204330911
-    [1 0] 1 0.965861547775
-    [1 1] 0 -0.0495891910655
+    [0 0] 0 0.089678460178
+    [0 1] 1 0.989339313261
+    [1 0] 1 0.993289624639
+    [1 1] 0 0.0980044181149
     
-    score: 99.823%
+    score: 99.555%
 
 
 
 ![png](output_7_1.png)
 
 
-    CPU times: user 239 ms, sys: 12.7 ms, total: 252 ms
-    Wall time: 265 ms
+    CPU times: user 226 ms, sys: 10.4 ms, total: 236 ms
+    Wall time: 242 ms
 

@@ -163,17 +163,17 @@ class mlp():
     
     #Showing it working, example_run
     def example_run(self, plot=True):
-        clf.fit(self.X, self.y)
+        self.fit(self.X, self.y)
         print"Results:\n"
         print " X    y    Predicted"
         results = clf.predict(self.X)
         for i in xrange(4):
             print self.X[i],self.y[i], results[:,0][i]
-        print"\nscore: %.3f%%"%(clf.score(self.X,self.y)*100)
+        print"\nscore: %.3f%%"%(self.score(self.X,self.y)*100)
         
         if plot:
             import matplotlib.pyplot as plt
-            plt.plot(clf.error_list)
+            plt.plot(self.error_list)
             plt.title("Mean Squared Error (MSE) per generation")
             plt.xlabel("Generation")
             plt.ylabel("MSE")
@@ -184,23 +184,23 @@ class mlp():
 
 
 ```python
-clf = mlp(seed=1, max_iter=1000, hidden_layer_size=4, alpha=5 )
+clf = mlp(seed=1, max_iter=300, hidden_layer_size=4, alpha=5 )
 clf.example_run()   
 ```
 
-    Starting MLP at: 2018-04-14 11:11:46.734338
-    Finishing MLP training at: 2018-04-14 11:11:46.796600
-    Final error: 0.000174336001931
-    It took 0:00:00.062262
+    Starting MLP at: 2018-04-15 21:44:18.771945
+    Finishing MLP training at: 2018-04-15 21:44:18.797382
+    Final error: 0.000949241885288
+    It took 0:00:00.025437
     Results:
     
      X    y    Predicted
-    [0 0] 0 0.010673363782
-    [0 1] 1 0.986232037491
-    [1 0] 1 0.988291187729
-    [1 1] 0 0.0159967683876
+    [0 0] 0 0.0248102502396
+    [0 1] 1 0.967929429577
+    [1 0] 1 0.973253685396
+    [1 1] 0 0.037640865398
     
-    score: 99.983%
+    score: 99.906%
 
 
 

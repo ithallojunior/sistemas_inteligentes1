@@ -157,17 +157,17 @@ class mlp():
 
     #Showing it working, example_run
     def example_run(self, plot=True):
-        clf.fit(self.X, self.y)
+        self.fit(self.X, self.y)
         print"Results:\n"
         print " X    y    Predicted"
         results = clf.predict(self.X)
         for i in xrange(4):
             print self.X[i],self.y[i], results[:,0][i]
-        print"\nscore: %.3f%%"%(clf.score(self.X,self.y)*100)
+        print"\nscore: %.3f%%"%(self.score(self.X,self.y)*100)
 
         if plot:
             import matplotlib.pyplot as plt
-            plt.plot(clf.error_list)
+            plt.plot(self.error_list)
             plt.title("Mean Squared Error (MSE) per generation")
             plt.xlabel("Generation")
             plt.ylabel("MSE")
@@ -176,5 +176,5 @@ class mlp():
 
 #The example
 if __name__=="__main__":
-    clf = mlp(seed=1, max_iter=1000, hidden_layer_size=4, alpha=5 )
+    clf = mlp(seed=1, max_iter=300, hidden_layer_size=4, alpha=5 )
     clf.example_run()

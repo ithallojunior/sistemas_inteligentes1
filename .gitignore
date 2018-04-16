@@ -7,3 +7,4 @@
 
 # Python files
 *.pyc
+.ipynb_checkpoints

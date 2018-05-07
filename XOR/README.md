@@ -17,8 +17,8 @@ import datetime
 
 ```python
 class mlp():
-    def __init__(self, hidden_layer_size=3, activation="sigmoid", alpha=0.1, max_iter=1000, bias=True,  
-                 tol=1e-10, seed=None, keep_error_list=True, warm_start=False, coefs=None):
+    def __init__(self, hidden_layer_size=3, activation="tanh", alpha=0.1, max_iter=1000, bias=True,  
+                 tol=1e-3, seed=None, keep_error_list=True, warm_start=False, coefs=None):
         self.hidden_layer_size = hidden_layer_size
         self.activation = activation
         self.alpha = alpha
@@ -40,10 +40,23 @@ class mlp():
             if(deriv==True):
                 return 1. - np.square(np.tanh(X))
             else: return np.tanh(X)
+        
         elif self.activation=="sigmoid":
             if(deriv==True):
-                return X * (1 - X ) 
+                out = self._function(X)
+                return out * (1. - out ) 
             else:  return 1./(1+np.exp( -X ))
+        
+        elif self.activation=="linear":
+            if(deriv==True):
+                return 1.
+            else:
+                return X
+        elif self.activation=="softplus":
+            if(deriv==True):
+                return  1./(1+np.exp( -X ))
+            else:
+                return  np.log(1 + np.exp(X))
 
         
     
@@ -111,7 +124,7 @@ class mlp():
             
             # stopping by error
             if self.error < self.tol:
-                print "stopping by error"
+                print "Stopping by error at", i
                 break
             
         ed = datetime.datetime.now()
@@ -124,27 +137,29 @@ class mlp():
         #backprogation
         
         #calculating first layer
-        layer1 = self._function(np.dot(layer0, self.coefs[0]))
+        sum_layer1 = np.dot(layer0, self.coefs[0])
+        layer1 = self._function(sum_layer1)
         #calculating for the hidden
-        layer2 = self._function(np.dot(layer1, self.coefs[1]))
+        sum_layer2 = np.dot(layer1, self.coefs[1])
+        layer2 = self._function(sum_layer2)
 
         #error to the target value
-        l2_error = y - layer2  
+        l2_error =   y - layer2 
         
         #slope for hidden
-        l2_delta =  l2_error * self._function(layer2, deriv=True)
+        l2_delta =  l2_error * self._function(sum_layer2, deriv=True)
         
         #contribuiton to the second from the first
         l1_error = np.dot(l2_delta, self.coefs[1].T)
         
         # slope of the sigmoid at the values in layer 1
-        l1_delta =  l1_error * self._function(layer1, deriv=True)
+        l1_delta =  l1_error * self._function(sum_layer1, deriv=True)
     
         
         ##updating all weights and setting the error as mean squared error
         self.coefs[1] = self.coefs[1] + self.alpha * np.dot(layer1.T, l2_delta)
         self.coefs[0] = self.coefs[0] + self.alpha * np.dot(layer0.T, l1_delta)
-        self.error = np.square(l2_error).sum()/l2_error.shape[0]
+        self.error = 0.5 * np.square(l2_error).sum()
     
     #predicts output after fitting a model, supposes the coefs are known    
     def predict(self, X):
@@ -166,8 +181,8 @@ class mlp():
         #correcting the shape of y
         y = self._y_shape_corrector(y)
         y_ = self.predict(X)
-        mse = np.square(y - y_).sum()/float(y.shape[0])
-        return float(1. - mse)
+        se = 0.5 * np.square(y - y_).sum()
+        return float(1. - se)
     
     #Showing it working, example_run
     def example_run(self, plot=True):
@@ -182,9 +197,9 @@ class mlp():
         if plot:
             import matplotlib.pyplot as plt
             plt.plot(self.error_list)
-            plt.title("Mean Squared Error (MSE) per generation")
+            plt.title("Squared Error per generation")
             plt.xlabel("Generation")
-            plt.ylabel("MSE")
+            plt.ylabel("Squared Error")
             plt.show()
 ```
 
@@ -195,60 +210,128 @@ class mlp():
 
 
 ```python
-clf = mlp(seed=1, activation="sigmoid", max_iter=300, hidden_layer_size=4, alpha=5)
+clf = mlp(seed=1, activation="sigmoid", max_iter=10000, 
+          hidden_layer_size=4, alpha=0.1, tol=1e-3)
 %time clf.example_run()   
 ```
 
-    Starting MLP at: 2018-04-15 23:28:57.799237
-    Finishing MLP training at: 2018-04-15 23:28:57.826877
-    Final error: 0.000949241885288
-    It took 0:00:00.027640
+    Starting MLP at: 2018-05-07 13:45:17.274252
+    Finishing MLP training at: 2018-05-07 13:45:17.742977
+    Final error: 0.00378037824044
+    It took 0:00:00.468725
     Results:
     
      X    y    Predicted
-    [0 0] 0 0.0248102502396
-    [0 1] 1 0.967929429577
-    [1 0] 1 0.973253685396
-    [1 1] 0 0.037640865398
+    [0 0] 0 0.0349913383061
+    [0 1] 1 0.954790641348
+    [1 0] 1 0.962021370068
+    [1 1] 0 0.0533727411107
     
-    score: 99.906%
+    score: 99.622%
 
 
 
 ![png](output_5_1.png)
 
 
-    CPU times: user 445 ms, sys: 74.2 ms, total: 519 ms
-    Wall time: 605 ms
+    CPU times: user 868 ms, sys: 74.8 ms, total: 943 ms
+    Wall time: 1.03 s
 
 
 #### Using tanh
 
 
 ```python
-clf = mlp(seed=1, activation="tanh", max_iter=300, hidden_layer_size=4, alpha=.4)
+clf = mlp(seed=1, activation="tanh", max_iter=10000, 
+          hidden_layer_size=4, alpha=0.1, tol=1e-3)
 %time clf.example_run()   
 ```
 
-    Starting MLP at: 2018-04-15 23:28:58.411577
-    Finishing MLP training at: 2018-04-15 23:28:58.440488
-    Final error: 0.00363558474058
-    It took 0:00:00.028911
+    Starting MLP at: 2018-05-07 13:45:18.310348
+    Stopping by error at 1164
+    Finishing MLP training at: 2018-05-07 13:45:18.397661
+    Final error: 0.000999217420691
+    It took 0:00:00.087313
     Results:
     
      X    y    Predicted
-    [0 0] 0 0.089678460178
-    [0 1] 1 0.989339313261
-    [1 0] 1 0.993289624639
-    [1 1] 0 0.0980044181149
+    [0 0] 0 0.00112584266483
+    [0 1] 1 0.964411543683
+    [1 0] 1 0.973118901463
+    [1 1] 0 0.00240969205842
     
-    score: 99.555%
+    score: 99.900%
 
 
 
 ![png](output_7_1.png)
 
 
-    CPU times: user 226 ms, sys: 10.4 ms, total: 236 ms
-    Wall time: 242 ms
+    CPU times: user 257 ms, sys: 8.86 ms, total: 266 ms
+    Wall time: 282 ms
+
+
+#### Using linear
+
+
+```python
+clf = mlp(seed=1, activation="linear", max_iter=10000, 
+          hidden_layer_size=4, alpha=0.1, tol=1e-3)
+%time clf.example_run()   
+```
+
+    Starting MLP at: 2018-05-07 13:45:18.601158
+    Finishing MLP training at: 2018-05-07 13:45:18.850148
+    Final error: 0.5
+    It took 0:00:00.248990
+    Results:
+    
+     X    y    Predicted
+    [0 0] 0 0.5
+    [0 1] 1 0.5
+    [1 0] 1 0.5
+    [1 1] 0 0.5
+    
+    score: 50.000%
+
+
+
+![png](output_9_1.png)
+
+
+    CPU times: user 425 ms, sys: 8.61 ms, total: 434 ms
+    Wall time: 437 ms
+
+
+#### Using softplus
+
+
+```python
+clf = mlp(seed=1, activation="softplus", max_iter=10000, 
+          hidden_layer_size=4, alpha=0.1, tol=1e-3)
+%time clf.example_run()  
+```
+
+    Starting MLP at: 2018-05-07 13:45:19.048055
+    Stopping by error at 2357
+    Finishing MLP training at: 2018-05-07 13:45:19.151201
+    Final error: 0.000999532746936
+    It took 0:00:00.103146
+    Results:
+    
+     X    y    Predicted
+    [0 0] 0 0.029591420851
+    [0 1] 1 0.998144243488
+    [1 0] 1 0.998795651237
+    [1 1] 0 0.0334232394392
+    
+    score: 99.900%
+
+
+
+![png](output_11_1.png)
+
+
+    CPU times: user 799 ms, sys: 56 ms, total: 855 ms
+    Wall time: 1.01 s
 

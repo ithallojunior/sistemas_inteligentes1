@@ -9,10 +9,8 @@
 import numpy as np
 import datetime
 
-
 class mlp():
-    def __init__(self, hidden_layer_size=3, activation="sigmoid", alpha=0.1, max_iter=1000, bias=True,
-                 tol=1e-10, seed=None, keep_error_list=True, warm_start=False, coefs=None):
+    def __init__(self, hidden_layer_size=3, activation="tanh", alpha=0.1, max_iter=1000, bias=True, tol=1e-3, seed=None, keep_error_list=True, warm_start=False, coefs=None):
         self.hidden_layer_size = hidden_layer_size
         self.activation = activation
         self.alpha = alpha
@@ -37,8 +35,22 @@ class mlp():
 
         elif self.activation=="sigmoid":
             if(deriv==True):
-                return X * (1 - X )
+                out = self._function(X)
+                return out * (1. - out )
             else:  return 1./(1+np.exp( -X ))
+
+        elif self.activation=="linear":
+            if(deriv==True):
+                return 1.
+            else:
+                return X
+        elif self.activation=="softplus":
+            if(deriv==True):
+                return  1./(1+np.exp( -X ))
+            else:
+                return  np.log(1 + np.exp(X))
+
+
 
     # corrects the  shape of y
     def _y_shape_corrector(self, y):
@@ -104,7 +116,7 @@ class mlp():
 
             # stopping by error
             if self.error < self.tol:
-                print "stopping by error"
+                print "Stopping by error at", i
                 break
 
         ed = datetime.datetime.now()
@@ -117,27 +129,29 @@ class mlp():
         #backprogation
 
         #calculating first layer
-        layer1 = self._function(np.dot(layer0, self.coefs[0]))
+        sum_layer1 = np.dot(layer0, self.coefs[0])
+        layer1 = self._function(sum_layer1)
         #calculating for the hidden
-        layer2 = self._function(np.dot(layer1, self.coefs[1]))
+        sum_layer2 = np.dot(layer1, self.coefs[1])
+        layer2 = self._function(sum_layer2)
 
         #error to the target value
-        l2_error = y - layer2
+        l2_error =   y - layer2
 
         #slope for hidden
-        l2_delta =  l2_error * self._function(layer2, deriv=True)
+        l2_delta =  l2_error * self._function(sum_layer2, deriv=True)
 
         #contribuiton to the second from the first
         l1_error = np.dot(l2_delta, self.coefs[1].T)
 
         # slope of the sigmoid at the values in layer 1
-        l1_delta =  l1_error * self._function(layer1, deriv=True)
+        l1_delta =  l1_error * self._function(sum_layer1, deriv=True)
 
 
         ##updating all weights and setting the error as mean squared error
         self.coefs[1] = self.coefs[1] + self.alpha * np.dot(layer1.T, l2_delta)
         self.coefs[0] = self.coefs[0] + self.alpha * np.dot(layer0.T, l1_delta)
-        self.error = np.square(l2_error).sum()/l2_error.shape[0]
+        self.error = 0.5 * np.square(l2_error).sum()
 
     #predicts output after fitting a model, supposes the coefs are known
     def predict(self, X):
@@ -159,8 +173,8 @@ class mlp():
         #correcting the shape of y
         y = self._y_shape_corrector(y)
         y_ = self.predict(X)
-        mse = np.square(y - y_).sum()/float(y.shape[0])
-        return float(1. - mse)
+        se = 0.5 * np.square(y - y_).sum()
+        return float(1. - se)
 
     #Showing it working, example_run
     def example_run(self, plot=True):
@@ -175,13 +189,12 @@ class mlp():
         if plot:
             import matplotlib.pyplot as plt
             plt.plot(self.error_list)
-            plt.title("Mean Squared Error (MSE) per generation")
+            plt.title("Squared Error per generation")
             plt.xlabel("Generation")
-            plt.ylabel("MSE")
+            plt.ylabel("Squared Error")
             plt.show()
-
 
 #The example
 if __name__=="__main__":
-    clf = mlp(seed=1, max_iter=300, hidden_layer_size=4, alpha=5 )
+    clf = mlp()
     clf.example_run()

@@ -73,7 +73,7 @@ void xor_printer(void){
 
   //printf("%d %d %d %d\n", xy_d0,x_d1, xy_d0, y_d1);
   //matrix multiplication 1 and tf
-  printf("\nFIRST OUTPUT:\n");
+  //printf("\nFIRST OUTPUT:\n");
   for (i=0;i<xy_d0;i++ ){
     for (j=0;j<y_d1;j++){
         sum1[i][j] = 0.;
@@ -81,17 +81,22 @@ void xor_printer(void){
           sum1[i][j] += sum0[i][k] * w1[k][j]; 
         }
         y_output[i][j] = sigmoid(sum1[i][j]) ;
-        printf("%.1f|%.1f:   %.3f \n", X[i][0], X[i][1], y_output[i][j] );
+        //printf("%.1f|%.1f:   %.3f \n", X[i][0], X[i][1], y_output[i][j] );
     }
   }
   //////////////////// backpropagation //////////////////////
+  
+  // training loop
+  for(m=0;m<max_iter;m++){
+
+  }
   //TODO
 
   //////////////////// final printer ////////////////////////
   printf("\nDATA:\n");
-  printf("X            y\n");
+  printf("-->X       y      y_\n");
   for (i=0;i<4;i++){
-    printf("%.1f|%.1f:   %.2f\n", X[i][0], X[i][1], y[i][0]);
+    printf("%.1f|%.1f:   %.2f I %.2f\n", X[i][0], X[i][1], y[i][0], y_output[i][0]);
   }
 }
 
@@ -105,4 +110,5 @@ int main() {
   printf("Size 0 of array: %d \n", size0);
   printf("Size 1 of array: %zu \n", size1);
   xor_printer();
+  getchar();//pause
 }

@@ -8,3 +8,7 @@
 # Python files
 *.pyc
 .ipynb_checkpoints
+
+# vim files
+*.swp
+*.swo

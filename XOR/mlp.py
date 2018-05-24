@@ -10,19 +10,25 @@ import numpy as np
 import datetime
 
 class mlp():
-    def __init__(self, hidden_layer_size=3, activation="tanh", alpha=0.1, max_iter=1000, bias=True, tol=1e-3, seed=None, keep_error_list=True, warm_start=False, coefs=None):
+    def __init__(self, hidden_layer_size=3, activation="tanh", alpha=0.1, momentum=0.9, max_iter=1000, bias=True,
+                 tol=1e-3, seed=None, keep_error_list=True, warm_start=False, coefs=None, weight_range=(0.,1.)):
+
         self.hidden_layer_size = hidden_layer_size
         self.activation = activation
         self.alpha = alpha
+        self.momentum=momentum
         self.max_iter = max_iter
         self.bias = bias
+        self._bias = None
         self.tol = tol
         self.seed = seed
         self.keep_error_list = keep_error_list
         self.error_list = []
         self.warm_start = warm_start
         self.coefs = coefs
+        self._previous_deltas = None
         self.error = 0
+        self.weight_range = weight_range
         self.X = np.array([[0, 0],[0, 1], [1, 0], [1, 1]])
         self.y = np.array([0, 1, 1, 0])
 
@@ -65,25 +71,33 @@ class mlp():
     # creates the internal structure of the network
     def _network_constructor(self, X_, y_):
 
+        # inicialize with a deterministic seed is a good practice
+        np.random.seed(self.seed)
+
+        #bias, always have this +1 dimension
+
+        if self.bias:
+            self._bias = np.ones((X_.shape[0], 1)) # vector of ones for the bias
+        else:
+            self._bias = np.zeros((X_.shape[0], 1)) # vector of ones for the bias
+
+
         #checks if there is a warm start
         if self.warm_start and (self.coefs != None):
             self.coefs = coefs
+            self._previous_deltas = [np.zeros(coefs[0].shape), np.zeros(coefs[1].shape)] # for warm start
         else:
+            #cosntructing layers with weights randomly between the said range
+            l0 = X_.shape[-1] + 1
+            intermediate = self.hidden_layer_size + 1
 
-            # inicialize with a deterministic seed is a good practice
-            np.random.seed(self.seed)
-
-            #bias
-            if self.bias:
-                l0 = X_.shape[-1] + 1
-            else:
-                l0 = X_.shape[-1]
-
-            #cosntructing layers with weights randomly with mean 0
-            hidden_layers = 2*np.random.random((l0, self.hidden_layer_size)) - 1.
-            output_layer = 2*np.random.random((self.hidden_layer_size, y_.shape[-1])) - 1.
+            hidden_layers = np.random.uniform(low=self.weight_range[0],
+                                              high=self.weight_range[1], size=(l0, self.hidden_layer_size))
+            output_layer = np.random.uniform(low=self.weight_range[0],
+                                             high=self.weight_range[1], size=(intermediate, y_.shape[-1]))
 
             self.coefs = [hidden_layers, output_layer]
+            self._previous_deltas = [np.zeros(hidden_layers.shape), np.zeros(output_layer.shape)]
     # run
     def fit(self, X, y):
 
@@ -98,11 +112,11 @@ class mlp():
         #print self.coefs
 
         #bias in the network, if needed and creating the layer 0
-        if self.bias:
-            layer0 = np.hstack((X, np.ones((X.shape[0], 1))))
-        else:
-            layer0 = X
-
+        #if self.bias:
+        #    layer0 = np.hstack((X, np.ones((X.shape[0], 1))))
+        #else:
+        #    layer0 = X
+        layer0 =  layer0 = np.hstack((X, self._bias))
         st = datetime.datetime.now()
         print "Starting MLP at:", st
         for i in xrange(self.max_iter):
@@ -131,12 +145,15 @@ class mlp():
         #calculating first layer
         sum_layer1 = np.dot(layer0, self.coefs[0])
         layer1 = self._function(sum_layer1)
+        layer1_w_bias = np.hstack((layer1, self._bias))
+
         #calculating for the hidden
-        sum_layer2 = np.dot(layer1, self.coefs[1])
+        sum_layer2 = np.dot(layer1_w_bias, self.coefs[1])
         layer2 = self._function(sum_layer2)
 
+
         #error to the target value
-        l2_error =   y - layer2
+        l2_error =   -(y - layer2)
 
         #slope for hidden
         l2_delta =  l2_error * self._function(sum_layer2, deriv=True)
@@ -144,27 +161,43 @@ class mlp():
         #contribuiton to the second from the first
         l1_error = np.dot(l2_delta, self.coefs[1].T)
 
-        # slope of the sigmoid at the values in layer 1
-        l1_delta =  l1_error * self._function(sum_layer1, deriv=True)
+        # slope of the sigmoid at the values in layer 1, chopped because of the bias
+        l1_delta =  l1_error[:,:-1] * self._function(sum_layer1, deriv=True)
 
 
-        ##updating all weights and setting the error as mean squared error
-        self.coefs[1] = self.coefs[1] + self.alpha * np.dot(layer1.T, l2_delta)
-        self.coefs[0] = self.coefs[0] + self.alpha * np.dot(layer0.T, l1_delta)
+        # defining the weights' deltas
+        w0_delta = -self.alpha * np.dot(layer0.T, l1_delta) +  self.momentum * self._previous_deltas[0]
+        w1_delta = -self.alpha * np.dot(layer1_w_bias.T, l2_delta) + self.momentum * self._previous_deltas[1]
+
+        ##updating all weights
+        self.coefs[0] = self.coefs[0] +  w0_delta
+        self.coefs[1] = self.coefs[1] + w1_delta
+
+
+        #setting the previous deltas weights and calculating the error
+        self._previous_deltas = [w0_delta, w1_delta]
         self.error = 0.5 * np.square(l2_error).sum()
 
     #predicts output after fitting a model, supposes the coefs are known
     def predict(self, X):
 
-        #bias in the network, if needed
-        if self.bias:
-            layer0 = np.hstack((X, np.ones((X.shape[0], 1))))
-        else:
-            layer0 = X
+        # case for just predict, bias vector not set
+        if self._bias is None:
+
+            if self.bias:
+                self._bias = np.ones((X_.shape[0], 1)) # vector of ones for the bias
+            else:
+                self._bias = np.zeros((X_.shape[0], 1)) # vector of ones for the bias
+
+        #bias in the network, always there, sometimes as zeroes
+
+        layer0 = np.hstack((X, self._bias))
 
         layer1 = self._function(np.dot(layer0, self.coefs[0]))
 
-        layer2 = self._function(np.dot(layer1, self.coefs[1]))
+        layer1_w_bias = np.hstack((layer1, self._bias))
+
+        layer2 = self._function(np.dot(layer1_w_bias, self.coefs[1]))
 
         return layer2
 
@@ -177,16 +210,10 @@ class mlp():
         return float(1. - se)
 
     #Showing it working, example_run
-    def example_run(self, plot=True):
+    def example_run(self, show="static"):
         self.fit(self.X, self.y)
-        print"Results:\n"
-        print " X    y    Predicted"
-        results = clf.predict(self.X)
-        for i in xrange(4):
-            print self.X[i],self.y[i], results[:,0][i]
-        print"\nscore: %.3f%%"%(self.score(self.X,self.y)*100)
 
-        if plot:
+        if show=="static":
             import matplotlib.pyplot as plt
             plt.plot(self.error_list)
             plt.title("Squared Error per generation")
@@ -194,7 +221,46 @@ class mlp():
             plt.ylabel("Squared Error")
             plt.show()
 
+        #not in matplotlib
+        if show=="online":
+            import matplotlib.pyplot as plt
+            from matplotlib.animation import FuncAnimation
+
+            fig, ax = plt.subplots()
+            xdata, ydata = [], []
+            ln, = plt.plot([], [],linewidth=2,  animated=True)
+
+            def init():
+                ax.set_xlim(0, len(self.error_list))
+                ax.set_ylim(0, max(self.error_list))
+                return ln,
+
+            def update(frame):
+                xdata.append(frame)
+                ydata.append(self.error_list[frame])
+                ln.set_data(xdata, ydata)
+
+                return ln,
+
+            plt.title("Squared Error per generation")
+            plt.xlabel("Generation")
+            plt.ylabel("Squared Error")
+
+            ani = FuncAnimation(fig, update, frames=range(len(self.error_list)),
+                                init_func=init, blit=True,interval=10)
+            plt.show()
+
+
+        #results
+        print"Results:\n"
+        print " X    y    Predicted"
+        results = clf.predict(self.X)
+        for i in xrange(4):
+            print self.X[i],self.y[i], results[:,0][i]
+        print"\nscore: %.3f%%"%(self.score(self.X,self.y)*100)
+
 #The example
 if __name__=="__main__":
-    clf = mlp()
-    clf.example_run()
+    clf = mlp(seed=1, activation="tanh", max_iter=10000,
+          hidden_layer_size=4, alpha=0.1, momentum=0.9,tol=1e-3, weight_range=(-1,1), bias=True)
+    clf.example_run(show="online")

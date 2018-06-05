@@ -1,6 +1,6 @@
 # Title: Parkinson's Disease Data Set
 
-**Obtained from:** <https://archive.ics.uci.edu/ml/datasets/Abscisic+Acid+Signaling+Network>
+**Obtained from:** <https://archive.ics.uci.edu/ml/datasets/Parkinsons>
 
 **Abstract:** Oxford Parkinson's Disease Detection Dataset
 

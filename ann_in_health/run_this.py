@@ -1,35 +1,113 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import sys
 sys.path.append("../")
 from mlp import mlp
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import pandas as pd
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import scale
+from sklearn.metrics import confusion_matrix
+import itertools
 import datetime
 import pdb
 import os
 
+def plot_confusion_matrix(y_test, y_pred):
+    
+    #pdb.set_trace()
+    if raw_input("\nDo you want to plot the confusion matrix? (y/N): ")=="y":
+    
+        cnf_matrix = confusion_matrix(y_test, y_pred)
+        classes = np.array(["No Parkinson", "Parkinson"])
+        plt.clf()
+        plt.close("all")
+        #plt.figure(figsize = (7.5,6))
+        plt.imshow(cnf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
+        plt.title('Normalized confusion matrix')
+        plt.colorbar()
+        tick_marks = np.arange(len(classes))
+        plt.xticks(tick_marks, classes, rotation=45)
+        plt.yticks(tick_marks, classes)
+        
+        #normalized
+        cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
+        thresh = cnf_matrix.max() / 2.
+        for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
+            plt.text(j, i, round(cnf_matrix[i, j], 3),
+                horizontalalignment="center",
+                color="white" if cnf_matrix[i, j] > thresh else "black")
+        
+        plt.tight_layout()
+        plt.ylabel('Expected label')
+        plt.xlabel('Predicted label')
+        plt.show()
+        plt.close('all')
+        plt.clf()
+        
+
+
+
+# receives data
 def data_input(mydict):
-    sigmoid = "sigmoid"
     tanh = "tanh"
+    sigmoid = "sigmoid"
     softplus = "softplus"
     mykeys = mydict.keys()
+    sz = len(mykeys)
     print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    print "Variable      Default Value\n"
-    for i in mykeys:
-        print "%s: %s"%(i, mydict[i])
-    to_change = raw_input("\nType the names of variables to be changed, leave empty to default:\n").split()
+    print "Variable      Value\n"
+    for i in xrange(sz):
+        print "%s | %s: %s"%(i, mykeys[i], mydict[mykeys[i]])
+    to_change = str(raw_input("\nType the numbers of variables to be changed (wrong or empty for deafult):\n")).split()
 
+    #print to_change
+    if to_change!=[]:
+        print "\nTypos will result in the code restarting\n"
+    
     for i in to_change:
-        if i in mykeys:
-            mydict[i] = eval(raw_input("Type value for %s: "%(i)))
-
+        try:
+            j = int(i)
+            if (j>=0) and (j<sz):
+                mydict[mykeys[j]] = eval(raw_input("Type value for %s: "%(mykeys[j])))
+        except ValueError:
+            print "Wrong value, values set to default/previous \n"
+            pass
     #print mydict
     print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
     return mydict
 
 
+# plot error on the go
+def error_plotter(error_list):
+    if raw_input("\nDo you want to plot the error on the go? (y/N): ")=="y":
+        #pdb.set_trace()
+        fig = plt.figure(1) 
+        ax = plt.axes(xlim=(0, len(error_list)), ylim=(0, max(error_list)))
+        xdata, ydata = [], []
+        ln, = ax.plot([], [], lw=2)
+
+        def init():
+            ln.set_data([],[])
+            return ln,
+
+        def update(frame):
+            xdata.append(frame)
+            ydata.append(error_list[frame])
+            ln.set_data(xdata, ydata)
+            return ln,
+
+        plt.title("Squared Error per generation")
+        plt.xlabel("Generation")
+        plt.ylabel("Squared Error")
+
+        ani = FuncAnimation(fig, update, frames=range(len(error_list)),
+                            init_func=init, blit=True,interval=10)
+        plt.show()
+        plt.close('all')
+        plt.clf()
+        
 def interface():
     
     #getting dataset
@@ -59,58 +137,103 @@ def interface():
     y_validation = y[myray[int(0.85*X.shape[0]):]]
 
 
-    myparam = {"seed":1277,
-        "activation":"tanh",
-        "max_iter":1000, 
-        "hidden_layer_size":12, 
-        "alpha":0.001, 
-        "momentum":0.9, 
-        "tol":1e-3, 
-        "weight_range":(-1., 1.),
-        "bias":True}
+    param = {"Seed":1277,
+        "Activation function":"tanh",
+        "Maximum iterations":1000, 
+        "Hidden layer size":12, 
+        "Learning rate":0.001, 
+        "Momentum":0.9, 
+        "Maximum error":1e-3, 
+        "Weight range":(-1., 1.),
+        "Bias":True}
     #loop
-    while(1):
-        
+    while(1):     
         try:
             print "Type ctrl-c to exit"
             #pdb.set_trace()
-            param = data_input(myparam)
+            param = data_input(param)
             #print param, "\n\n\n\n\n"
 
-            clf = mlp(seed=param["seed"], activation=param["activation"], max_iter=param["max_iter"], 
-                hidden_layer_size=param["hidden_layer_size"], alpha=param["alpha"], momentum=param["momentum"], 
-                tol=param["tol"], weight_range=param["weight_range"], bias=param["bias"], classifier=True)
+            clf = mlp(seed=param["Seed"], activation=param["Activation function"], max_iter=param["Maximum iterations"], 
+                hidden_layer_size=param["Hidden layer size"], alpha=param["Learning rate"], momentum=param["Momentum"], 
+                tol=param["Maximum error"], weight_range=param["Weight range"], bias=param["Bias"], classifier=True)
             
             clf.fit(X_train, y_train)
 
-            print "Validation:%.2f"%(clf.score(X_validation, y_validation) *100)
+            print "\nValidation score: %.2f"%(clf.score(X_validation, y_validation) *100)
             
-            if 'y'!=raw_input("Do you want to change something and run again for validation? (y/N)\n"):
-                print "Final Test"
-                print "Test:%.2f\n"%(clf.score(X_test, y_test) *100) 
+            ##################################################################################################
+            
+            if 'y'!=raw_input("\n\nDo you want to change something and run again for validation? (y/N): "):
+                    
+                #plotting the error
+                error_plotter(clf.error_list) 
+                
+                #print test score
+                #pdb.set_trace()
+                
+                
                 names = data.name[myray[int(0.7*X_data.shape[0]):int(0.85*X_data.shape[0])]].values
                 pred = clf.predict(X_test)[:,0]
-                print "Pacient name   |    Result    |  Expected\n"
+                 
+                #plotting confusion matrix
+                plot_confusion_matrix(y_test, pred)
+               
+                os.system("clear")
+                print "Final Test Score "
+                print "Test score: %.2f\n"%(clf.score(X_test, y_test) *100) 
+                print "Patient label  |    Result    |  Expected\n"
                 for i in xrange(y_test.shape[0]):
                     result = np.where(pred==1., "   Parkinson", "No Parkinson")
                     ex = np.where(y_test==1., "Parkinson", "No Parkinson")
                     print ("%s : %s | %s")%(names[i], result[i], ex[i])
+                
+                
                 break
+        except (TypeError, NameError, SyntaxError) as e:
+            os.system("clear")
+            print "\n\nYou typed something wrong, please repeat.\n\n"
+            raw_input("Press enter to continue...")
+            os.system("clear")
         except KeyboardInterrupt:
+            os.system("clear")
             break
-
-    print "\nExited"
-
-if __name__=="__main__":
+    
         os.system("clear")
+    
+    print "\nFinished"
 
-        print "#######################################"
-        print "##                                   ##" 
-        print "##  This software aims to predict    ##" 
-        print "##     whether the patient has       ##" 
-        print "##  Parkinson disease or not based   ##" 
-        print "##  on the voice and some features   ##" 
-        print "##  of it.                           ##" 
-        print "##                                   ##" 
-        print "#######################################"
+
+def welcome():
+    try: 
+        os.system("clear")
+        print "             #######################################"
+        print "             ##                                   ##" 
+        print "             ##  This software aims to predict    ##" 
+        print "             ##     whether the patient has       ##" 
+        print "             ##  Parkinson disease or not based   ##" 
+        print "             ##  on the voice and some features   ##" 
+        print "             ##  of it.                           ##" 
+        print "             ##                                   ##" 
+        print "             #######################################"
+
+        print "\n\nDisclaimer:"
+        print "This program is just a proof"
+        print "of concept and in ABSOLUTE NO WAY should be" 
+        print "used for a diagnostics purpose." 
+        print "Use it at your own risk."
+
+        print "\n\nDeveloped by:"
+        print "Ithallo J.A.G.,José E.S.," 
+        print "Renata M.L. and Roberta M.L.C."
+        
+        print "\nContact ithallojunior@outlook.com for more information."
+        raw_input("Press enter to continue...")
+        os.system("clear")
+    
+    except KeyboardInterrupt:
+        print "\nExiting \n" 
+        os._exit(1)
+if __name__=="__main__":
+        welcome()
         interface()

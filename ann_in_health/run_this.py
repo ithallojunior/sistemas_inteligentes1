@@ -14,6 +14,43 @@ import datetime
 import pdb
 import os
 
+
+def helper():
+    os.system("clear")
+    
+    print "--> Seed:"
+    print"Integer to mark your results and allow others to repeat it (e.g., 1, 10, None).\n"
+    
+    print "--> Activation function:"
+    print "It must be sigmoid, tanh or softplus. Others will be considered typos.\n"
+    
+    print "--> Weight range:"
+    print "It must follow the structure (min, max), otherwise it will be considered a typo.\n"
+
+    print "--> Learning rate:"
+    print "Number, usually less than 1. (e.g., 0.1, 0.01, 0.001).\n"
+    
+    print "--> Momentum:" 
+    print "Number between 0. (not using it) to 1.\n"
+    
+    print "--> Bias:"  
+    print "True or False. It must be capitalized, otherwise will be considered a typo.\n"
+    
+    print "--> Maximum iterations:"
+    print "Number of maximum rounds to run, usually a large number (e.g., 100, 1000).\n"
+    
+    print "--> Minimum error:"
+    print "Stopping criterion, usually less than 1. (e.g., 0.0001).\n"
+    
+    print "--> Hidden layer size:"
+    print "Number of units in the hidden layer, greater than 0 (e.g., 3, 10, 20).\n"
+    
+    print "Typos will be bypassed. Remember to only use white spaces as separators\n"
+    
+    raw_input("Press enter to continue...")
+    os.system("clear")
+
+# plots the confusion matrix
 def plot_confusion_matrix(y_test, y_pred):
     
     #pdb.set_trace()
@@ -57,14 +94,20 @@ def data_input(mydict):
     mykeys = mydict.keys()
     sz = len(mykeys)
     print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    print "Variable      Value\n"
+    print "# | Variable  |  Value\n"
     for i in xrange(sz):
         print "%s | %s: %s"%(i, mykeys[i], mydict[mykeys[i]])
-    to_change = str(raw_input("\nType the numbers of variables to be changed (wrong or empty for deafult):\n")).split()
+    print "\nType help for, you guessed right, help."
+    print "Use only white spaces to separate."
+    print "Wrong numbers or empty will call the previous/default ones."
+    to_change = str(raw_input("Type the numbers of variables to be changed:\n")).split()
 
     #print to_change
     if to_change!=[]:
-        print "\nTypos will result in the code restarting\n"
+        #calling helper
+        if "help" in to_change:
+            helper()
+        
     
     for i in to_change:
         try:
@@ -72,7 +115,7 @@ def data_input(mydict):
             if (j>=0) and (j<sz):
                 mydict[mykeys[j]] = eval(raw_input("Type value for %s: "%(mykeys[j])))
         except ValueError:
-            print "Wrong value, values set to default/previous \n"
+            #print "Wrong value, values set to default/previous \n"
             pass
     #print mydict
     print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -98,12 +141,12 @@ def error_plotter(error_list):
             ln.set_data(xdata, ydata)
             return ln,
 
-        plt.title("Squared Error per generation")
-        plt.xlabel("Generation")
+        plt.title("Squared Error per iteration")
+        plt.xlabel("Iteration")
         plt.ylabel("Squared Error")
 
         ani = FuncAnimation(fig, update, frames=range(len(error_list)),
-                            init_func=init, blit=True,interval=10)
+            init_func=init, blit=True,interval=10)
         plt.show()
         plt.close('all')
         plt.clf()
@@ -160,11 +203,11 @@ def interface():
             
             clf.fit(X_train, y_train)
 
-            print "\nValidation score: %.2f"%(clf.score(X_validation, y_validation) *100)
+            print "\nValidation score: %.2f%%"%(clf.score(X_validation, y_validation) *100)
             
             ##################################################################################################
             
-            if 'y'!=raw_input("\n\nDo you want to change something and run again for validation? (y/N): "):
+            if 'y'!=raw_input("\n\nDo you want to change anything and run again for validation? (y/N): "):
                     
                 #plotting the error
                 error_plotter(clf.error_list) 
@@ -181,7 +224,7 @@ def interface():
                
                 os.system("clear")
                 print "Final Test Score "
-                print "Test score: %.2f\n"%(clf.score(X_test, y_test) *100) 
+                print "Test score: %.2f%%\n"%(clf.score(X_test, y_test) *100) 
                 print "Patient label  |    Result    |  Expected\n"
                 for i in xrange(y_test.shape[0]):
                     result = np.where(pred==1., "   Parkinson", "No Parkinson")
@@ -192,7 +235,7 @@ def interface():
                 break
         except (TypeError, NameError, SyntaxError) as e:
             os.system("clear")
-            print "\n\nYou typed something wrong, please repeat.\n\n"
+            print "\n\nYou had a typo, please repeat.\n\n"
             raw_input("Press enter to continue...")
             os.system("clear")
         except KeyboardInterrupt:
@@ -226,8 +269,9 @@ def welcome():
         print "\n\nDeveloped by:"
         print "Ithallo J.A.G.,José E.S.," 
         print "Renata M.L. and Roberta M.L.C."
-        
-        print "\nContact ithallojunior@outlook.com for more information."
+
+        print "\n\nDataset obtained from: https://archive.ics.uci.edu/ml/datasets/Parkinsons"
+        print "Contact ithallojunior@outlook.com for more information."
         raw_input("Press enter to continue...")
         os.system("clear")
     

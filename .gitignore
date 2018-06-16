@@ -9,6 +9,9 @@
 *.pyc
 .ipynb_checkpoints
 
+# token file
+data.py 
+
 # vim files
 *.swp
 *.swo

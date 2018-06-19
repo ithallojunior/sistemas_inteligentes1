@@ -8,6 +8,7 @@
 
 import numpy as np
 import datetime
+from scipy.special import expit # avoids overflows
 
 class mlp():
     def __init__(self, hidden_layer_size=3, activation="tanh", alpha=0.1, momentum=0.9,
@@ -44,7 +45,7 @@ class mlp():
             if(deriv==True):
                 out = self._function(X)
                 return out * (1. - out )
-            else:  return 1./(1+np.exp( -X ))
+            else:  return expit( -X )
 
         elif self.activation=="linear":
             if(deriv==True):
@@ -53,10 +54,12 @@ class mlp():
                 return X
         elif self.activation=="softplus":
             if(deriv==True):
-                return  1./(1+np.exp( -X ))
+                return  expit( -X )
             else:
-                return  np.log(1 + np.exp(X))
-
+                if X.any()<30: #avoiding overflows, by approximating
+                    return  np.log(1 + np.exp(X))
+                else:
+                     return X
 
 
     # corrects the  shape of y

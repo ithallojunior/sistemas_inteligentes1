@@ -22,7 +22,7 @@
 
 
 ## Telegram
-i 
+
  Telegram proveides a very easy to use API for creating bots in its interface
  and it has a Python library for it (Telepot). For more info, go to:
 
@@ -31,12 +31,22 @@ i
 
 After creating the bot with the BotFather, create a file named **data.py** with the following structure:
 
-TOKEN = YOUR TOKEN HERE
+TOKEN = "\<YOUR TOKEN\>"
+
+USER = "\<A USERNAME\>"
+
+PASSWORD =  "\<A PASSWORD\>"
 
 ## Design thoughts
-  
+
   + Check for a password on the first run, and then not ask for it again, unless
     the chat is erased;
-  + Always continue from the the previous state, unless the "start from zero" 
+  + Always continue from the previous state, unless the "start from zero" 
     button is pressed;
-  + And, because of the previous requirement, alllow just one user at a time.
+  + And, because of the previous requirement, allow just one user at a time.
+
+## Milestones
+  
+  + Password checking completed;
+  + States implemented;
+  + "Busy flag" (to allow just one user at a time) coded.

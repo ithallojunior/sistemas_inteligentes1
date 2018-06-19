@@ -11,6 +11,38 @@ import itertools
 import datetime
 import pickle
 
+## confusion matrix
+def cm(y_test, y_pred, to_file=True):
+    cnf_matrix = confusion_matrix(y_test, y_pred)
+    classes = np.array(["No Parkinson", "Parkinson"])
+    plt.clf()
+    plt.close("all")
+    #plt.figure(figsize = (7.5,6))
+    plt.imshow(cnf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title('Normalized confusion matrix')
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    #normalized
+    cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
+    thresh = cnf_matrix.max() / 2.
+    for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
+        plt.text(j, i, round(cnf_matrix[i, j], 3),
+            horizontalalignment="center",
+            color="white" if cnf_matrix[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('Expected label')
+    plt.xlabel('Predicted label')
+    if to_file:
+        plt.savefig("my.png")
+        plt.close()
+    else:
+        plt.show()
+
+
 #data reader, specific for the problem, returns the X and y data, not scaled
 #also makes the number of input even between classes
 def specific_data_reader(x_list=[22, 19, 0, 1, 2], to_scale=True):
@@ -41,36 +73,6 @@ def specific_data_reader(x_list=[22, 19, 0, 1, 2], to_scale=True):
     return X,y
  
     
-    
-## confusion matrix plot 
-def plot_confusion_matrix(y_test, y_pred):
-    
-    cnf_matrix = confusion_matrix(y_test, y_pred)
-    classes = np.array(["No Parkinson", "Parkinson"])
-    plt.clf()
-    plt.close("all")
-    #plt.figure(figsize = (7.5,6))
-    plt.imshow(cnf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title('Normalized confusion matrix')
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
-
-    #normalized
-    cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
-    thresh = cnf_matrix.max() / 2.
-    for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
-        plt.text(j, i, round(cnf_matrix[i, j], 3),
-            horizontalalignment="center",
-            color="white" if cnf_matrix[i, j] > thresh else "black")
-
-    plt.tight_layout()
-    plt.ylabel('Expected label')
-    plt.xlabel('Predicted label')
-    plt.show()
-
-
 ## genetic algorithm, generic enough to any amount of input data with 2 classes
 class genetic_population_creator():
 

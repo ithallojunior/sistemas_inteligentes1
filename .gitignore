@@ -15,3 +15,6 @@ data.py
 # vim files
 *.swp
 *.swo
+#temp files
+ga_mlp_bot/plot.png
+ga_mlp_bot/data.csv

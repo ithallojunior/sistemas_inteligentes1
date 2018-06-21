@@ -1,47 +1,155 @@
 # -*- coding: utf-8 -*-
 import telepot
 import time
+import numpy as np
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton
 from data import TOKEN, USER, PASSWORD
 import pickle
 import matplotlib.pyplot as  plt
 import os
+from genetic_alg import specific_data_reader, genetic_population_creator, cm
 
 class health_bot():
     
     def __init__(self,):
         self.sleep_time = 1.
-        self.state = "init"
+        self.state = "stat_ini"
         self.block_counter = 0
         self.max_to_block = 4 # plus 1
         self.busy_flag = False #allows just one user at a time
         self.user = USER
         self.bot  = telepot.Bot(TOKEN)
+        # initializing mlp reading data
+        f = open("pd.mlp", "r")
+        self.mlp = pickle.loads(f.read())
+        f.close()
+        self.xy = specific_data_reader()
+
+        #variables to change
+        #default
+        self._def_pop = 10 
+        self._def_cro = 0.5
+        self._def_mut = 0.1
+        self._def_pab = 0.5
+        self._def_gen = 100
+        self._def_err = 1e-3
         
+        # to change
+        self.value_pop = self._def_pop
+        self.value_cro = self._def_cro
+        self.value_mut = self._def_mut
+        self.value_pab = self._def_pab
+        self.value_gen = self._def_gen
+        self.value_err = self._def_err
+        
+        # GA
+        self.ga = genetic_population_creator(self.mlp, self.xy[0], 
+            population_size=self.value_pop, 
+            class_a_to_b_prop=self.value_pab, 
+            crossover_rate=self.value_cro, 
+            mutate_rate=self.value_mut,
+            total_generations=self.value_gen, 
+            verbose=False, seed=None, 
+            error_stop=self.value_err)
 
         #dictionaries, will make it easier to translate
         self.names2states = {
-            "init":"init",
-            "Set Population":"set_pop",
-            "Total Generations":"set_gen",
-            "Crossover Ratio":"set_cros",
-            "About":"about",
-            "Choose Parameters":"cho_par",
-            "Exit":"exit",
-            "Run>>":"run"}
-            
+            "/start":"stat_ini",
+            "Population size":"set_pop",
+            "Total generations":"set_gen",
+            "Crossover rate":"set_cro",
+            "Mutation rate":"set_mut",
+            "About":"stat_abo",
+            "View all parameters":"stat_vie",
+            "Choose parameters":"stat_cho",
+            "Exit":"stat_exi",
+            "Error to stop":"set_err",
+            "Class A to B proportion":"set_pab",
+            "<<Go back":"stat_gbc",
+            "Plot":"run_plo",
+            "Run again":"run_rag",
+            "Print data":"run_pri",
+            "Download":"run_dow",
+            "Run>>":"stat_run"}
+
+        #just because I'm lazy    
         self.states2names = self._invert_dict(self.names2states)
 
         #keyboards
+        #default
         self.default_keyboard = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="%s"%self.states2names["cho_par"])],
-        [KeyboardButton(text="%s"%self.states2names["exit"]),
-        KeyboardButton(text="%s"%self.states2names["about"])],
-        [KeyboardButton(text="%s"%self.states2names["run"])] ],
-        resize_keyboard=True,
-        one_time_keyboard=False)
+            [KeyboardButton(text="%s"%self.states2names["stat_cho"]),
+             KeyboardButton(text="%s"%self.states2names["stat_vie"]),],
+            [KeyboardButton(text="%s"%self.states2names["stat_exi"]),
+            KeyboardButton(text="%s"%self.states2names["stat_abo"])],
+            [KeyboardButton(text="%s"%self.states2names["stat_run"])] ],
+            resize_keyboard=True,
+            one_time_keyboard= False)
+        
+        #pop default keyboard
+        self.pop_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="10", callback_data="pop10"),
+            InlineKeyboardButton(text="50", callback_data="pop50"),
+            InlineKeyboardButton(text="100", callback_data="pop100"),
+            InlineKeyboardButton(text="500", callback_data="pop500")]]
+            )
     
+        # crossover default keyboard
+        self.cro_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="0.10", callback_data="cro0.10"),
+            InlineKeyboardButton(text="0.20", callback_data="cro0.20"),
+            InlineKeyboardButton(text="0.50", callback_data="cro0.50"),
+            InlineKeyboardButton(text="1", callback_data="cro1.")]]
+            )
+
+        # proportion default keyboard
+        self.pab_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="0.0", callback_data="pab0.0"),
+            InlineKeyboardButton(text="0.20", callback_data="pab0.20"),
+            InlineKeyboardButton(text="0.50", callback_data="pab0.50"),
+            InlineKeyboardButton(text="1", callback_data="pab1.")]]
+            )
+
+        #Mutate default keyboard
+        self.mut_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="0.0", callback_data="mut0.0"),
+            InlineKeyboardButton(text="0.10", callback_data="mut0.10"),
+            InlineKeyboardButton(text="0.20", callback_data="mut0.20"),
+            InlineKeyboardButton(text="0.50", callback_data="mut0.50")]]
+            )
+        #Total gen default keyboard
+        self.gen_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="10", callback_data="gen10"),
+            InlineKeyboardButton(text="50", callback_data="gen50"),
+            InlineKeyboardButton(text="200", callback_data="gen200"),
+            InlineKeyboardButton(text="500", callback_data="gen500")]]
+            )
+
+        #Error stop default keyboard
+        self.err_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="1e-10", callback_data="err1e-10"),
+            InlineKeyboardButton(text="1e-5", callback_data="err1e-5"),
+            InlineKeyboardButton(text="1e-3", callback_data="err1e-3"),
+            InlineKeyboardButton(text="1", callback_data="err1.")]]
+            )
+
+        #show image, save, etc. keyboard
+
+        self.fin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="%s"%self.states2names["run_rag"], callback_data="runrag")],
+            [InlineKeyboardButton(text="%s"%self.states2names["run_plo"], callback_data="runplo"),
+            InlineKeyboardButton(text="%s"%self.states2names["run_pri"], callback_data="runpri"),
+            InlineKeyboardButton(text="%s"%self.states2names["run_dow"], callback_data="rundow")]]
+            )
+
+        # return
+        self.gbc_keyboard = ReplyKeyboardMarkup(keyboard=[
+            [KeyboardButton(text="%s"%self.states2names["stat_gbc"])]],
+            resize_keyboard=True,
+            one_time_keyboard= False)
+    
+
     # dictionary inverter 
     def _invert_dict(self, d):
         return dict([ (v, k) for k, v in d.iteritems( ) ])
@@ -82,7 +190,8 @@ class health_bot():
     #defines the next state
     def next_state(self, msg):
         try:
-            self.state = self.names2states[msg["text"]]
+            state = self.names2states[msg["text"]]
+            self.state = state
             print "Next state:", self.state
             
         except KeyError:
@@ -99,38 +208,154 @@ class health_bot():
         if (not self._lock(chat_id, msg)): 
             
             self.next_state(msg)
-            if self.state == "init":   
-                self.bot.sendMessage(chat_id, "HELLO, %s"%self.user,
+            if (self.state == "stat_ini") or (self.state == "stat_gbc"):   
+                self.bot.sendMessage(chat_id, "HELLO, %s use the keyboard to interact"%self.user,
                     reply_markup=self.default_keyboard)
 
-            elif self.state == "set_pop":
-                pass
-
-            elif self.state == "set_gen":
-                pass
             
-            elif self.state == "set_cros":
-                pass
-            elif self.state == "about":
+            elif self.state == "stat_cho":
+                self.bot.sendMessage(chat_id, "====> Choose your parameters:")
+                
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_pop"],
+                    reply_markup=self.pop_keyboard) 
+
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_cro"],
+                    reply_markup=self.cro_keyboard)
+
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_mut"],
+                    reply_markup=self.mut_keyboard)
+
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_pab"],
+                    reply_markup=self.pab_keyboard)
+
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_gen"],
+                    reply_markup=self.gen_keyboard)
+
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_err"],
+                    reply_markup=self.err_keyboard)
+
+
+            elif self.state == "stat_run":
+                self.bot.sendMessage(chat_id, "RUNNING", reply_markup=self.gbc_keyboard)
+                
+                self.ga = genetic_population_creator(self.mlp, self.xy[0], 
+                    population_size=self.value_pop, 
+                    class_a_to_b_prop=self.value_pab, 
+                    crossover_rate=self.value_cro, 
+                    mutate_rate=self.value_mut,
+                    total_generations=self.value_gen, 
+                    verbose=False, seed=None, 
+                    error_stop=self.value_err)
+                
+                self.ga.fit()
+
+                self.bot.sendMessage(chat_id, "Finished", reply_markup=self.fin_keyboard)
+
+            elif self.state == "stat_abo":
                 self.bot.sendMessage(chat_id, "--->Bot developed by:")
                 self.bot.sendMessage(chat_id, "Ithallo J.A.G.🍺,\nJosé E.S.,\nRenata M.L.,\nRoberta M.L.C.")
                 self.bot.sendMessage(chat_id, "For educational purposes only")
             
-            elif self.state == "exit":
+            elif self.state == "stat_exi":
+                
+                #default vars
+                self.value_pop = self._def_pop
+                self.value_cro = self._def_cro
+                self.value_mut = self._def_mut
+                self.value_pab = self._def_pab
+                self.value_gen = self._def_gen
+                self.value_err = self._def_err
                 #reseting
-                self.state = "init"
+                self.state = "stat_ini"
                 self.block_counter = 0
                 self.max_to_block = 4 # plus 1
                 self.busy_flag = False #allows just one user at a time
                 self.user = USER
                 self.bot.sendMessage(chat_id, "Bye!👋🏼")
+            
+
+            elif self.state == "stat_vie":
+                mytext = "%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s"%(
+                    self.states2names["set_pop"], self.value_pop, 
+                    self.states2names["set_cro"], self.value_cro, 
+                    self.states2names["set_mut"], self.value_mut,
+                    self.states2names["set_pab"], self.value_pab,
+                    self.states2names["set_gen"], self.value_gen, 
+                    self.states2names["set_err"], self.value_err)
+                print mytext
+                self.bot.sendMessage(chat_id, mytext)
+
             else:
                 pass        
 
     #callbacks, if I use it
     def _on_callback(self, msg):
-        pass
+        query_id, chat_id, query_data = telepot.glance(msg, flavor='callback_query') 
+        plo = "plo"
+        rag = "rag"
+        pri = "pri"
+        dow = "dow"
+        state = query_data[:3]
+        data = eval(query_data[3:])
+        print "state  %s data %s type %s"%(state, data, type(data))
+        
+        if state == "pop":
+            self.value_pop = data
+        elif state == "cro":
+            self.value_cro = data
+        elif state == "mut":
+            self.value_mut = data
+        elif state == "pab":
+            self.value_pab = data
+        elif state == "gen":
+            self.value_gen = data
+        elif state == "err":
+            self.value_err = data
 
+        ## responsive functions
+        elif state == "run":
+            self._last_exec(data, chat_id)
+        else:
+            pass
+
+    # running last things
+    def _last_exec(self, data, chat_id):
+        if data == "plo":
+            file_path = "./plot.png"
+            print "Plotting"
+            plt.subplot(211)
+            plt.plot(self.ga.errorA)
+            plt.title("Error A0")
+            plt.subplot(212)
+            plt.plot(self.ga.errorB)
+            plt.title("Error B1")
+            plt.savefig(file_path)
+            plt.close()
+            
+            self.bot.sendMessage(chat_id, "Sending plot...")
+            self.bot.sendPhoto(chat_id, (file_path, open(file_path, "rb")))
+
+
+        elif data == "rag":
+            self.bot.sendMessage(chat_id, text="Running again")
+            print "Running again"
+            self.ga.fit()
+            self.bot.sendMessage(chat_id, text="Finished")
+        elif data == "pri":
+            print "printing data"
+            self.bot.sendMessage(chat_id, text="==>Data: ")
+            self.bot.sendMessage(chat_id, text="%s"%self.ga.population)
+        elif data == "dow":
+            file_path ="./data.csv"
+            np.savetxt(file_path, self.ga.population, delimiter=';')
+            self.bot.sendMessage(chat_id, "Sending file...")
+            self.bot.sendDocument(chat_id, (file_path, open(file_path, "rb")))
+
+            print "downloading"
+
+        else:
+            pass
+        self.bot.sendMessage(chat_id, text="Choose:", reply_markup=self.fin_keyboard)
     #the runner
     def run(self,):
         os.system("clear")

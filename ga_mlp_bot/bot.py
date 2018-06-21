@@ -20,6 +20,7 @@ class health_bot():
         self.busy_flag = False #allows just one user at a time
         self.user = USER
         self.bot  = telepot.Bot(TOKEN)
+        self.already_run = False
         # initializing mlp reading data
         f = open("pd.mlp", "r")
         self.mlp = pickle.loads(f.read())
@@ -209,7 +210,7 @@ class health_bot():
             
             self.next_state(msg)
             if (self.state == "stat_ini") or (self.state == "stat_gbc"):   
-                self.bot.sendMessage(chat_id, "HELLO, %s use the keyboard to interact"%self.user,
+                self.bot.sendMessage(chat_id, "Hello, %s, please use the keyboard below:"%self.user,
                     reply_markup=self.default_keyboard)
 
             
@@ -248,13 +249,13 @@ class health_bot():
                     error_stop=self.value_err)
                 
                 self.ga.fit()
-
+                self.already_run = True
                 self.bot.sendMessage(chat_id, "Finished", reply_markup=self.fin_keyboard)
 
             elif self.state == "stat_abo":
                 self.bot.sendMessage(chat_id, "--->Bot developed by:")
                 self.bot.sendMessage(chat_id, "Ithallo J.A.G.🍺,\nJosé E.S.,\nRenata M.L.,\nRoberta M.L.C.")
-                self.bot.sendMessage(chat_id, "For educational purposes only")
+                self.bot.sendMessage(chat_id, "For educational purposes only.")
             
             elif self.state == "stat_exi":
                 
@@ -267,6 +268,7 @@ class health_bot():
                 self.value_err = self._def_err
                 #reseting
                 self.state = "stat_ini"
+                self.already_run = False
                 self.block_counter = 0
                 self.max_to_block = 4 # plus 1
                 self.busy_flag = False #allows just one user at a time
@@ -314,7 +316,10 @@ class health_bot():
 
         ## responsive functions
         elif state == "run":
-            self._last_exec(data, chat_id)
+            if self.already_run:
+                self._last_exec(data, chat_id)
+            else:
+                self.bot.sendMessage(chat_id, "You must run first.\n Go back and run.")
         else:
             pass
 
@@ -323,12 +328,13 @@ class health_bot():
         if data == "plo":
             file_path = "./plot.png"
             print "Plotting"
+            plt.figure(figsize = (18,9))
             plt.subplot(211)
             plt.plot(self.ga.errorA)
-            plt.title("Error A0")
+            plt.title("Fitness for class A, the closer to 0 the better")
             plt.subplot(212)
             plt.plot(self.ga.errorB)
-            plt.title("Error B1")
+            plt.title("Fitness for class B, the closer to 0 the better")
             plt.savefig(file_path)
             plt.close()
             
@@ -341,10 +347,20 @@ class health_bot():
             print "Running again"
             self.ga.fit()
             self.bot.sendMessage(chat_id, text="Finished")
+        
         elif data == "pri":
-            print "printing data"
-            self.bot.sendMessage(chat_id, text="==>Data: ")
-            self.bot.sendMessage(chat_id, text="%s"%self.ga.population)
+            if self.value_pop<=50:
+                print "printing data"
+                pred = self.ga.mlp.predict(self.ga.population)
+                labels = np.where(1, pred>=0.5, 0)
+                mytext = "".join("%s:  %s\n"%(i ,j[0]) for i,j in zip(self.ga.population, labels))
+                mytext = mytext[1:]
+                print mytext
+                self.bot.sendMessage(chat_id, text="==>Data: ")
+                self.bot.sendMessage(chat_id, text="*Population: PD status* ``` %s```"%mytext, parse_mode="Markdown")
+            else:
+                self.bot.sendMessage(chat_id, text="Population too big to print data 😢")
+
         elif data == "dow":
             file_path ="./data.csv"
             np.savetxt(file_path, self.ga.population, delimiter=';')

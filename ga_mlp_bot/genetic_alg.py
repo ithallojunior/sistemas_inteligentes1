@@ -77,9 +77,9 @@ def specific_data_reader(x_list=[22, 19, 0, 1, 2], to_scale=True):
 class genetic_population_creator():
 
     def __init__(self, mlp, example_population, population_size=100,
-                 class_a_to_b_prop=0.5, crossover_rate=0.5, mutate_rate=0.1,
-                 total_generations=1000, verbose=False, seed=None, error_stop=1e-3):
-
+                 class_a_to_b_prop=0.5, crossover_rate=0.5, mutate_rate=0.1, 
+                 total_generations=1000, verbose=False, seed=None, error_stop=1e-3, unique=True):
+        
         self.mlp = mlp # the instace of the MLP already traine
         self.population = None
         self.population_size = population_size
@@ -88,12 +88,13 @@ class genetic_population_creator():
         self.verbose = verbose
         self.seed = seed
         self.error_stop = error_stop
+        self.unique = unique
         self.errorA = []
         self.errorB = []
-
+        
         #general purpose variables
         self.my_max = np.amax(example_population, axis=0)
-        self.my_min = np.amin(example_population, axis=0)
+        self.my_min = np.amin(example_population, axis=0)         
 
         self._rank = None
         self.fitnesses = None
@@ -102,9 +103,9 @@ class genetic_population_creator():
         self.to_crossover_n = int(crossover_rate * population_size)
         self.inv_to_crossover_n = int(self.population_size - self.to_crossover_n)
         self.class0_number = int(class_a_to_b_prop * population_size)
-
-
-    #creates the population
+        
+        
+    #creates the population    
     def _create_population(self):
         np.random.seed(self.seed)
         #print my_max, my_min
@@ -114,10 +115,21 @@ class genetic_population_creator():
                  pop.append(-(np.random.normal(-mx, -mn, (self.population_size))))
             else:
                 pop.append(np.random.normal(mn, mx, (self.population_size)))
-
+        
         self.population = np.abs(np.array(pop).T).round(3) #TODO REDO
+     
+    def _fill_pop(self, sz):
+        np.random.seed(self.seed)
+        #print my_max, my_min
+        pop = [] #CHEAT BELOW
+        for mn,mx  in zip(self.my_min, self.my_max):
+            if (mn<0) and (mx<0):
+                 pop.append(-(np.random.normal(-mx, -mn, (sz))))
+            else:
+                pop.append(np.random.normal(mn, mx, (sz)))
 
-
+        return np.abs(np.array(pop).T).round(3) #TODO REDO
+    
     #calculates the fitness and ranks the population, the closer to zero, the better
     # returns the rank (numbers from best to worst) and the error list sorted ()
     def _get_fitnesses(self, myclass=0):
@@ -126,7 +138,7 @@ class genetic_population_creator():
 
         #as we want to set the proportions, there are two fitnesses in one
         # half the pop takes one, the other takes the second
-
+        
         if myclass==0:
             rank_not_sorted = np.abs(prediction) # the closer to 0, the better
         else:
@@ -134,62 +146,63 @@ class genetic_population_creator():
 
         self._rank =  rank_not_sorted.argsort()
         self._fitness_array = np.sort(rank_not_sorted)
-
+    
     #calculates the external final fitness, assumes class a=>0, class b=>1 and resorts the population
-    def _final_sorter_grouper(self, class0, class1):
+    def _final_sorter_grouper(self, class0, class1):  
         pred_class0 = self.mlp.predict(class0)[:,0]
-        pred_class1 = self.mlp.predict(class1)[:,0]
-
+        pred_class1 = self.mlp.predict(class1)[:,0]         
+        
         rank_not_sorted_class0 = np.abs(pred_class0)
         rank_not_sorted_class1 = np.abs(1. - pred_class1)
         #print rank_not_sorted_class0.shape, rank_not_sorted_class1.shape
-
-        rank_not_sorted = np.hstack((rank_not_sorted_class0[:self.class0_number],
+        
+        rank_not_sorted = np.hstack((rank_not_sorted_class0[:self.class0_number], 
             rank_not_sorted_class1[self.class0_number:]))
-
+          
         self.population = np.vstack((class0[:self.class0_number, :], class1[self.class0_number:, :]))
         self.population = self.population[rank_not_sorted.argsort()]
         self.fitnesses = np.sort(rank_not_sorted)
-
+        
     # makes the crossover and removes the less fitted (the number of indivuals always stays the same)
     def _crossover(self):
-
+        
         np.random.seed(self.seed)
-
-        #print"cross", n_cross, "inv cross" ,inv_n_cross
-
+        
+        #print"cross", n_cross, "inv cross" ,inv_n_cross 
+        
         # aligning the population to the order of the rank
         self.population = self.population[self._rank]
         #print "\n pop", self.population
-
+        
         #other from all array, to maintain the diversity
         other_elements = np.copy(self._rank)
         np.random.shuffle(other_elements)
-        #print "\n shuffle\n", other_elements
-
+        #print "\n shuffle\n", other_elements 
+        
         #choosing randomly th point to cross, as it is an odd number
         cross_point = np.random.randint(1, self.population.shape[1])
         #print "\n cross point", cross_point
-
+        
         #crossing the bests with the others and removing excessive data
         rand_pop = self.population[other_elements]
         data = np.hstack((self.population[:, :cross_point], rand_pop[:, cross_point:]))
         #print "\n data\n", data
-
+        
         #adding new individuals to end and removing the worst ones
         #print"cross", n_cross, "inv cross" ,inv_n_cross
-
-        old_pop = self.population[:self.inv_to_crossover_n, :]
+        
+        #old_pop = self.population[:self.inv_to_crossover_n, :]
         new_pop = data[:self.to_crossover_n, :]
-        #print"old", old_pop.shape,"\n new", new_pop.shape
+        #print"old", old_pop.shape,"\n new", new_pop.shape 
 
-        self.population = np.vstack((old_pop, new_pop))
-
+        #self.population = np.vstack((old_pop, new_pop))
+        self.population = np.vstack((self.population, new_pop))
         #print "\n pop\n", self.population
-
+        
+    
     # mutates the remaining population
     def _mutate(self):
-
+                
         # no reason to run if not to mutate
         if self.to_mutate_n > 0:
             np.random.seed(self.seed)
@@ -199,75 +212,84 @@ class genetic_population_creator():
             mutated_individuals = my_array[:self.to_mutate_n]
             #mutated cromossomes
             mutated_cromossomes = np.random.randint(0, self.population.shape[1], (self.to_mutate_n))
-            #print"\n muatation"
+            #print"\n muatation" 
             #print mutated_individuals, mutated_cromossomes
-            pop = []
-            for mn,mx  in zip(self.my_min, self.my_max): #CHEAT
-                if (mn<0) and (mx<0):
-                    pop.append(-(np.random.normal(-mx, -mn, (self.to_mutate_n))))
-                else:
-                    pop.append(np.random.normal(mn, mx, (self.to_mutate_n)))
-
-            m_pop = np.abs(np.array(pop).T).round(3)[:, mutated_cromossomes][:, 0] #TODO REDO
+            
+            m_pop = self._fill_pop(self.to_mutate_n)[:, mutated_cromossomes][:, 0]
             #print m_pop
-
+        
             self.population[mutated_individuals, mutated_cromossomes] = m_pop
-
-
+        
+    #trims to the wanted size and removes not unique elements, if wanted
+    def _trimmer(self):
+        if self.unique:
+            pop = self.population[self._rank] #must sort before
+            pop_unique = np.unique(pop, axis=0)
+            tx = self.population_size - pop_unique.shape[0]  
+            if tx > 0:
+                pop_fill = self._fill_pop(tx)
+                self.population = np.vstack((pop_unique, pop_fill)) # adding new individuals
+            else:
+                self.population = pop_unique[:self.population_size, :]       
+        else:
+            pop = self.population[self._rank]
+            self.population = pop[:self.population_size, :]
+        
+        #just executig one time
+        self._rank = self._rank[:self.population_size]
+        
     #receives noinput and returns the generated population
     def fit(self):
-
+        
         # generating class A
-
+        
         if self.verbose:
             print "Finding class A"
-
-        self._create_population()
+        
+        self._create_population()  
         self.errorA = []
         for i in xrange(self.total_generations):
-
+            
             self._get_fitnesses(myclass=0)
-
+            self._crossover()
+            self._mutate()
+            self._get_fitnesses(myclass=0)
+            self._trimmer()
+            
             my_tot_error = self._fitness_array.sum()
-
-            self.errorA.append(my_tot_error)
-
+            self.errorA.append(my_tot_error) 
             if self.verbose:
                 print "---> Summed scores: %s"%self._fitness_array.sum()
             if my_tot_error<=self.error_stop:
                 print "A stopping by error at %s"%i
                 break
+        class0 = np.copy(self.population) 
 
-            self._crossover()
-            self._mutate()
-        class0 = np.copy(self.population)
 
-        # generating class B
+        # generating class B  
         if self.verbose:
             print "Finding class B"
-
+            
         self._create_population()
         self.errorB = []
         for i in xrange(self.total_generations):
-
+            
+            self._get_fitnesses(myclass=1)  
+            self._crossover()
+            self._mutate()
             self._get_fitnesses(myclass=1)
-
+            self._trimmer()
+            
             my_tot_error = self._fitness_array.sum()
-
             self.errorB.append(my_tot_error)
-
             if self.verbose:
                 print "---> Summed scores: %s"%self._fitness_array.sum()
             if my_tot_error<=self.error_stop:
                 print "B stopping by error at %s"%i
-                break
-
-            self._crossover()
-            self._mutate()
+                break  
 
         # setting the final rank joining  and the population back together
         self._final_sorter_grouper(class0, self.population)
-
 
 
 if __name__=="__main__":
@@ -278,9 +300,9 @@ if __name__=="__main__":
     clf = pickle.loads(f.read())
     f.close()
 
-    ga = genetic_population_creator(clf, X, population_size=10, seed=0,
-        verbose=False, total_generations=100, error_stop=1-10,
-        crossover_rate=0.5, mutate_rate=0.2, class_a_to_b_prop=0.5)
+    ga = genetic_population_creator(clf, X, population_size=10, seed=None,
+        verbose=False, total_generations=200, error_stop=1-10,
+        crossover_rate=0.5, mutate_rate=0.1, class_a_to_b_prop=0.5, unique=False)
 
     ga.fit()
 

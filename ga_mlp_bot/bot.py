@@ -30,11 +30,12 @@ class health_bot():
         #variables to change
         #default
         self._def_pop = 10 
-        self._def_cro = 0.5
+        self._def_cro = 0.2
         self._def_mut = 0.1
         self._def_pab = 0.5
         self._def_gen = 100
         self._def_err = 1e-3
+        self._def_uni = False
         
         # to change
         self.value_pop = self._def_pop
@@ -43,6 +44,7 @@ class health_bot():
         self.value_pab = self._def_pab
         self.value_gen = self._def_gen
         self.value_err = self._def_err
+        self.value_uni = self._def_uni
         
         # GA
         self.ga = genetic_population_creator(self.mlp, self.xy[0], 
@@ -52,7 +54,8 @@ class health_bot():
             mutate_rate=self.value_mut,
             total_generations=self.value_gen, 
             verbose=False, seed=None, 
-            error_stop=self.value_err)
+            error_stop=self.value_err,
+            unique=self.value_uni)
 
         #dictionaries, will make it easier to translate
         self.names2states = {
@@ -61,6 +64,7 @@ class health_bot():
             "Total generations":"set_gen",
             "Crossover rate":"set_cro",
             "Mutation rate":"set_mut",
+            "Get only unique values (might affect proportion)":"set_uni",
             "About":"stat_abo",
             "View all parameters":"stat_vie",
             "Choose parameters":"stat_cho",
@@ -122,9 +126,9 @@ class health_bot():
         #Total gen default keyboard
         self.gen_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="10", callback_data="gen10"),
-            InlineKeyboardButton(text="50", callback_data="gen50"),
-            InlineKeyboardButton(text="200", callback_data="gen200"),
-            InlineKeyboardButton(text="500", callback_data="gen500")]]
+            InlineKeyboardButton(text="100", callback_data="gen100"),
+            InlineKeyboardButton(text="500", callback_data="gen500"),
+            InlineKeyboardButton(text="1000", callback_data="gen1000")]]
             )
 
         #Error stop default keyboard
@@ -135,6 +139,11 @@ class health_bot():
             InlineKeyboardButton(text="1", callback_data="err1.")]]
             )
 
+        # unique individual set keyboard
+        self.uni_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Yes", callback_data="uniTrue"),
+            InlineKeyboardButton(text="No", callback_data="uniFalse")]]
+            )
         #show image, save, etc. keyboard
 
         self.fin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -157,20 +166,25 @@ class health_bot():
     
     #locker, if not found or recognized
     def _lock(self, chat_id, msg):
-       # bypass for the programmer 
-        if (msg["from"]["username"] == self.user) or (msg["from"]["username"] == USER):
+       # bypass for the programmer
+        try:
+            local_user = msg["from"]["username"]
+        except:
+            print "no user name"
+            local_user = "EMPTY_FIELD"
+        if (local_user == self.user) or (local_user == USER):
             self.busy_flag = True
-            print "user access: %s"%msg["from"]["username"]
+            print "user access: %s"%local_user
             return False 
-        elif(msg["from"]["username"]!= self.user) and (not self.busy_flag):
+        elif(local_user!= self.user) and (not self.busy_flag):
             if self.block_counter < self.max_to_block:
-                print "user trying to access: %s "%msg["from"]["username"]
+                print "user trying to access: %s "%local_user
                 if self.block_counter == 0:
                     self.bot.sendMessage(chat_id, "Type the password:") 
                 
                 if msg["text"]==PASSWORD:
-                    print "new user from password: %s "%msg["from"]["username"]
-                    self.user = msg["from"]["username"]
+                    print "new user from password: %s "%local_user
+                    self.user = local_user
                     self.busy_flag = True
                     self.bot.sendMessage(chat_id, "Password Accepted!") 
                     return False
@@ -180,11 +194,11 @@ class health_bot():
                         self.bot.sendMessage(chat_id, "Wrong password! Type again!") 
                     self.block_counter += 1    
             else:
-                print "user blocked trying to access: %s"%msg["from"]["username"]
+                print "user blocked trying to access: %s"%local_user
                 self.bot.sendMessage(chat_id, "Bot blocked for you!") 
         else:
             self.bot.sendMessage(chat_id, "Bot busy")
-            print "Bot busy:  %s"%msg["from"]["username"]
+            print "Bot busy:  %s"%local_user
         return True
    
 
@@ -235,6 +249,8 @@ class health_bot():
                 self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_err"],
                     reply_markup=self.err_keyboard)
 
+                self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_uni"],
+                    reply_markup=self.uni_keyboard)
 
             elif self.state == "stat_run":
                 self.bot.sendMessage(chat_id, "RUNNING", reply_markup=self.gbc_keyboard)
@@ -246,7 +262,8 @@ class health_bot():
                     mutate_rate=self.value_mut,
                     total_generations=self.value_gen, 
                     verbose=False, seed=None, 
-                    error_stop=self.value_err)
+                    error_stop=self.value_err,
+                    unique=self.value_uni)
                 
                 self.ga.fit()
                 self.already_run = True
@@ -266,6 +283,7 @@ class health_bot():
                 self.value_pab = self._def_pab
                 self.value_gen = self._def_gen
                 self.value_err = self._def_err
+                self.value_uni = self._def_uni
                 #reseting
                 self.state = "stat_ini"
                 self.already_run = False
@@ -277,13 +295,14 @@ class health_bot():
             
 
             elif self.state == "stat_vie":
-                mytext = "%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s"%(
+                mytext = "%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s"%(
                     self.states2names["set_pop"], self.value_pop, 
                     self.states2names["set_cro"], self.value_cro, 
                     self.states2names["set_mut"], self.value_mut,
                     self.states2names["set_pab"], self.value_pab,
                     self.states2names["set_gen"], self.value_gen, 
-                    self.states2names["set_err"], self.value_err)
+                    self.states2names["set_err"], self.value_err,
+                    self.states2names["set_uni"], self.value_uni)
                 print mytext
                 self.bot.sendMessage(chat_id, mytext)
 
@@ -313,7 +332,8 @@ class health_bot():
             self.value_gen = data
         elif state == "err":
             self.value_err = data
-
+        elif state == "uni":
+            self.value_uni = data
         ## responsive functions
         elif state == "run":
             if self.already_run:
@@ -353,7 +373,7 @@ class health_bot():
                 print "printing data"
                 pred = self.ga.mlp.predict(self.ga.population)
                 labels = np.where(1, pred>=0.5, 0)
-                mytext = "".join("%s:  %s\n"%(i ,j[0]) for i,j in zip(self.ga.population, labels))
+                mytext = "".join(" %s:  %s\n"%(i ,j[0]) for i,j in zip(self.ga.population, labels))
                 mytext = mytext[1:]
                 print mytext
                 self.bot.sendMessage(chat_id, text="==>Data: ")

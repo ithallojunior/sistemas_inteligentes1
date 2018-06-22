@@ -64,7 +64,7 @@ class health_bot():
             "Total generations":"set_gen",
             "Crossover rate":"set_cro",
             "Mutation rate":"set_mut",
-            "Get only unique values (might affect proportion)":"set_uni",
+            "Get only unique values":"set_uni",
             "About":"stat_abo",
             "View all parameters":"stat_vie",
             "Choose parameters":"stat_cho",

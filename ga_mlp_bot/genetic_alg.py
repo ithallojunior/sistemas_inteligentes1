@@ -224,8 +224,9 @@ class genetic_population_creator():
     def _trimmer(self):
         if self.unique:
             pop = self.population[self._rank] #must sort before
-            pop_unique = np.unique(pop, axis=0)
-            tx = self.population_size - pop_unique.shape[0]  
+            pop_, seq = np.unique(pop, axis=0, return_index = True) #pop is not needed, just the array
+            pop_unique = pop[np.sort(seq)]
+            tx = self.population_size - seq.shape[0]  
             if tx > 0:
                 pop_fill = self._fill_pop(tx)
                 self.population = np.vstack((pop_unique, pop_fill)) # adding new individuals

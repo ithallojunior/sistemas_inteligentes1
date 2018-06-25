@@ -229,7 +229,7 @@ class health_bot():
 
             
             elif self.state == "stat_cho":
-                self.bot.sendMessage(chat_id, "====> Choose your parameters:")
+                self.bot.sendMessage(chat_id, "*Choose your parameters:*", parse_mode="Markdown")
                 
                 self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_pop"],
                     reply_markup=self.pop_keyboard) 
@@ -252,6 +252,8 @@ class health_bot():
                 self.bot.sendMessage(chat_id, "%s:"%self.states2names["set_uni"],
                     reply_markup=self.uni_keyboard)
 
+                self.bot.sendMessage(chat_id, "*End of the parameters*",  parse_mode="Markdown")
+
             elif self.state == "stat_run":
                 self.bot.sendMessage(chat_id, "RUNNING", reply_markup=self.gbc_keyboard)
                 
@@ -270,9 +272,9 @@ class health_bot():
                 self.bot.sendMessage(chat_id, "Finished", reply_markup=self.fin_keyboard)
 
             elif self.state == "stat_abo":
-                self.bot.sendMessage(chat_id, "--->Bot developed by:")
-                self.bot.sendMessage(chat_id, "Ithallo J.A.G.🍺,\nJosé E.S.,\nRenata M.L.,\nRoberta M.L.C.")
-                self.bot.sendMessage(chat_id, "For educational purposes only.")
+                self.bot.sendMessage(chat_id, "*Bot developed by:*", parse_mode="Markdown")
+                self.bot.sendMessage(chat_id, "``` Ithallo J.A.G.;    🍺\n José E.S.;\n Renata M.L.;\n Roberta M.L.C.```", parse_mode="Markdown")
+                self.bot.sendMessage(chat_id, "_For educational purposes only._", parse_mode="Markdown")
             
             elif self.state == "stat_exi":
                 
@@ -295,7 +297,7 @@ class health_bot():
             
 
             elif self.state == "stat_vie":
-                mytext = "%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s"%(
+                mytext = "*%s:* %s\n*%s:* %s\n*%s:* %s\n*%s:* %s\n*%s:* %s\n*%s:* %s\n*%s:* %s"%(
                     self.states2names["set_pop"], self.value_pop, 
                     self.states2names["set_cro"], self.value_cro, 
                     self.states2names["set_mut"], self.value_mut,
@@ -304,7 +306,7 @@ class health_bot():
                     self.states2names["set_err"], self.value_err,
                     self.states2names["set_uni"], self.value_uni)
                 print mytext
-                self.bot.sendMessage(chat_id, mytext)
+                self.bot.sendMessage(chat_id, mytext, parse_mode="Markdown")
 
             else:
                 pass        
